@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ambition-postgres
+    environment:
+      POSTGRES_DB: ambition
+      POSTGRES_USER: ambition
+      POSTGRES_PASSWORD: ambition_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./apps/api/prisma/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - ambition
+
+  # Redis for session storage and caching
+  redis:
+    image: redis:7-alpine
+    container_name: ambition-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ambition
+
+  # API Server
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: ambition-api
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://ambition:ambition_dev_password@postgres:5432/ambition
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      COOKIE_SECRET: your-super-secret-cookie-key-change-in-production
+      API_PORT: 8787
+      LOG_LEVEL: info
+    ports:
+      - "8787:8787"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./apps/api:/app
+      - /app/node_modules
+    networks:
+      - ambition
+    restart: unless-stopped
+
+  # Web Frontend (optional nginx for serving static files)
+  web:
+    image: nginx:alpine
+    container_name: ambition-web
+    ports:
+      - "3000:80"
+    volumes:
+      - ./apps/web:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+    networks:
+      - ambition
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  ambition:
+    driver: bridge

@@ -1,0 +1,100 @@
+{
+  "king": {
+    "input": "I want to be a king and rule with wisdom and justice",
+    "expected": {
+      "archetypes": ["king"],
+      "virtues": ["wisdom", "justice"],
+      "vices": [],
+      "weights": {
+        "king": 0.33,
+        "wisdom": 0.33,
+        "justice": 0.34
+      }
+    }
+  },
+  "warrior": {
+    "input": "I want to be a great warrior feared by my enemies",
+    "expected": {
+      "archetypes": ["warrior"],
+      "virtues": [],
+      "vices": [],
+      "weights": {
+        "warrior": 1.0
+      }
+    }
+  },
+  "good_man": {
+    "input": "I want to be a good man who helps others and shows compassion",
+    "expected": {
+      "archetypes": [],
+      "virtues": ["compassion"],
+      "vices": [],
+      "weights": {
+        "compassion": 1.0
+      }
+    }
+  },
+  "merchant_king": {
+    "input": "I want to be a wealthy merchant king who rules through gold and trade",
+    "expected": {
+      "archetypes": ["merchant", "king"],
+      "virtues": [],
+      "vices": [],
+      "weights": {
+        "merchant": 0.5,
+        "king": 0.5
+      }
+    }
+  },
+  "proud_warrior": {
+    "input": "I want to be an arrogant warrior who shows no mercy to enemies",
+    "expected": {
+      "archetypes": ["warrior"],
+      "virtues": [],
+      "vices": ["pride"],
+      "weights": {
+        "warrior": 0.5,
+        "pride": 0.5
+      }
+    }
+  },
+  "scholarly_priest": {
+    "input": "I want to be a wise priest who studies divine knowledge and helps the faithful",
+    "expected": {
+      "archetypes": ["priest", "scholar"],
+      "virtues": ["wisdom"],
+      "vices": [],
+      "weights": {
+        "priest": 0.33,
+        "scholar": 0.33,
+        "wisdom": 0.34
+      }
+    }
+  },
+  "complex_ambition": {
+    "input": "I want to be a just and honorable king who fights for his people but struggles with pride",
+    "expected": {
+      "archetypes": ["king", "warrior"],
+      "virtues": ["justice", "honor"],
+      "vices": ["pride"],
+      "weights": {
+        "king": 0.2,
+        "warrior": 0.2,
+        "justice": 0.2,
+        "honor": 0.2,
+        "pride": 0.2
+      }
+    }
+  },
+  "simple_power": {
+    "input": "I want power",
+    "expected": {
+      "archetypes": ["king"],
+      "virtues": [],
+      "vices": [],
+      "weights": {
+        "king": 1.0
+      }
+    }
+  }
+}

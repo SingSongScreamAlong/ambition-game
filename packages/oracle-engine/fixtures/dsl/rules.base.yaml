@@ -1,0 +1,360 @@
+requirements:
+  land:
+    label: "Control Territory"
+    paths:
+      conquest:
+        costs:
+          gold: 200
+          wood: 50
+        time: "3 turns"
+        risks:
+          casualty: 0.3
+          failure: 0.2
+        requirements: ["army"]
+        effects: ["gain_territory", "increase_reputation", "+legitimacy.might = 8"]
+      purchase:
+        costs:
+          gold: 500
+        time: "1 turn"
+        risks:
+          rejection: 0.1
+        effects: ["gain_territory"]
+      grant:
+        requirements: ["legitimacy"]
+        time: "2 turns"
+        risks:
+          conditions: 0.2
+        effects: ["gain_territory", "political_debt", "+legitimacy.lineage = 5"]
+      marriage:
+        costs:
+          gold: 300
+        time: "2 turns"
+        requirements: ["reputation"]
+        risks:
+          scandal: 0.1
+        effects: ["gain_territory", "alliance", "+legitimacy.lineage = 6"]
+
+  army:
+    label: "Raise an Army"
+    paths:
+      recruitment:
+        costs:
+          gold: 100
+          grain: 50
+        time: "2 turns"
+        requirements: ["people"]
+        effects: ["gain_forces", "+legitimacy.might = 4"]
+      mercenaries:
+        costs:
+          gold: 300
+        time: "1 turn"
+        risks:
+          desertion: 0.2
+        effects: ["gain_forces"]
+      conscription:
+        costs:
+          grain: 100
+        time: "1 turn"
+        risks:
+          unrest: 0.4
+        requirements: ["land"]
+        effects: ["gain_forces", "reduce_loyalty", "+legitimacy.might = 3", "-legitimacy.law = 2"]
+
+  people:
+    label: "Win the People"
+    paths:
+      charity:
+        costs:
+          gold: 150
+          grain: 100
+        time: "1 turn"
+        effects: ["increase_loyalty", "reduce_unrest", "+legitimacy.law = 3"]
+      justice:
+        time: "2 turns"
+        requirements: ["legitimacy"]
+        effects: ["increase_loyalty", "improve_order", "+legitimacy.law = 8"]
+      protection:
+        costs:
+          gold: 100
+        time: "1 turn"
+        requirements: ["army"]
+        effects: ["increase_loyalty", "improve_security"]
+
+  treasury:
+    label: "Fill the Treasury"
+    paths:
+      taxation:
+        time: "1 turn"
+        requirements: ["people", "land"]
+        risks:
+          unrest: 0.2
+        effects: ["gain_gold", "reduce_loyalty"]
+      trade:
+        costs:
+          wood: 50
+        time: "2 turns"
+        effects: ["gain_gold", "improve_economy"]
+      conquest:
+        requirements: ["army"]
+        time: "3 turns"
+        risks:
+          casualty: 0.4
+          failure: 0.3
+        effects: ["gain_gold", "gain_resources"]
+
+  legitimacy:
+    label: "Gain Legitimacy"
+    paths:
+      bloodline:
+        costs:
+          gold: 200
+        time: "3 turns"
+        effects: ["gain_legitimacy", "noble_support", "+legitimacy.lineage = 15"]
+      divine_right:
+        requirements: ["faith"]
+        time: "2 turns"
+        costs:
+          gold: 100
+        effects: ["gain_legitimacy", "religious_support", "+legitimacy.faith = 12"]
+      election:
+        requirements: ["people"]
+        time: "2 turns"
+        risks:
+          defeat: 0.3
+        effects: ["gain_legitimacy", "popular_mandate", "+legitimacy.law = 10"]
+      conquest:
+        requirements: ["army", "land"]
+        time: "4 turns"
+        risks:
+          rebellion: 0.2
+        effects: ["gain_legitimacy", "fear_respect", "+legitimacy.might = 20", "-legitimacy.law = 5"]
+
+  governance:
+    label: "Governance Actions"
+    paths:
+      pass_fair_trial:
+        label: "Enact Fair Trials"
+        costs:
+          gold: 100
+        time: "1 turn"
+        effects: ["+legitimacy.law = 5", "+region.lawfulness = 10", "-region.unrest = 5"]
+      enforce_harsh_punishment:
+        label: "Enforce Harsh Punishments"
+        costs:
+          gold: 50
+        time: "1 turn"
+        effects: ["+legitimacy.might = 4", "-legitimacy.law = 3", "-region.unrest = 10", "-region.loyalty = 5"]
+      codify_tax_edict:
+        label: "Codify Tax Edict"
+        costs:
+          gold: 150
+        time: "2 turns"
+        effects: ["+legitimacy.law = 6", "+treasury.gold = 100", "+region.unrest = 4"]
+      suspend_justice:
+        label: "Suspend Justice"
+        costs: {}
+        time: "instant"
+        effects: ["-legitimacy.law = 8", "+legitimacy.might = 3", "-region.lawfulness = 15"]
+
+  faith:
+    label: "Faith & Religious Actions"
+    paths:
+      donate_to_temple:
+        label: "Donate to Temple"
+        costs:
+          gold: 200
+        time: "1 turn"
+        effects: ["+legitimacy.faith = 8", "+region.piety = 12", "-region.unrest = 3"]
+      host_pilgrimage:
+        label: "Host Pilgrimage"
+        costs:
+          gold: 300
+          grain: 50
+        time: "2 turns"
+        risks:
+          banditry: 0.2
+        effects: ["+region.piety = 15", "+treasury.gold = 100", "+legitimacy.faith = 6"]
+      seek_holy_relic:
+        label: "Seek Holy Relic"
+        costs:
+          gold: 500
+        time: "3 turns"
+        risks:
+          fraud: 0.3
+        effects: ["+legitimacy.faith = 20", "+region.piety = 10"]
+      public_fast:
+        label: "Declare Public Fast"
+        costs:
+          grain: 75
+        time: "1 turn"
+        effects: ["+region.piety = 8", "-region.unrest = 6", "+legitimacy.faith = 4"]
+      denounce_heresy:
+        label: "Denounce Heresy"
+        costs:
+          gold: 100
+        time: "1 turn"
+        risks:
+          unrest: 0.25
+        effects: ["-region.heresy = 15", "+legitimacy.faith = 10", "+region.piety = 5"]
+
+generators:
+  - id: "iron_caravan"
+    conditions: ["iron_scarcity", "road_security < 0.5"]
+    action:
+      id: "escort_iron_caravan"
+      label: "Escort Iron Caravan"
+      description: "A merchant offers good pay to escort an iron shipment through dangerous territory. Bandits have been spotted along the trade routes."
+      satisfies: []
+      costs:
+        wood: 10
+      rewards:
+        gold: 150
+        iron: 20
+      risks:
+        ambush: 0.3
+      time: "1 turn"
+      requirements: ["army"]
+      mapRefs: ["trade_route_north"]
+
+  - id: "grain_shortage"
+    conditions: ["grain < 50", "winter"]
+    action:
+      id: "emergency_grain_purchase"
+      label: "Emergency Grain Purchase"
+      description: "A neighboring lord offers grain at premium prices due to the shortage. The price is steep, but your people need food."
+      satisfies: []
+      costs:
+        gold: 200
+      rewards:
+        grain: 100
+      time: "1 turn"
+
+  - id: "bandit_threat"
+    conditions: ["unrest > 0.3", "security < 0.4"]
+    action:
+      id: "clear_bandits"
+      label: "Clear Bandit Camp"
+      description: "Bandits threaten the trade routes and terrorize your people. Clearing them would improve security and show your strength."
+      satisfies: ["people"]
+      costs:
+        gold: 50
+      rewards:
+        gold: 100
+      risks:
+        casualty: 0.2
+      time: "2 turns"
+      requirements: ["army"]
+      mapRefs: ["bandit_camp"]
+      effects: ["+legitimacy.might = 3", "+legitimacy.law = 2"]
+
+  - id: "noble_feast"
+    conditions: ["gold > 200", "loyalty > 0.7"]
+    action:
+      id: "host_grand_feast"
+      label: "Host Grand Feast"
+      description: "Your growing reputation allows you to host a grand feast, attracting nobles and merchants who might support your cause."
+      satisfies: ["legitimacy"]
+      costs:
+        gold: 250
+        grain: 50
+      rewards:
+        gold: 50
+      time: "1 turn"
+      effects: ["+legitimacy.lineage = 4", "+legitimacy.law = 2"]
+
+  - id: "harvest_festival"
+    conditions: ["grain > 100", "tick % 4 == 1"]
+    action:
+      id: "organize_harvest_festival"
+      label: "Organize Harvest Festival"
+      description: "The harvest is good this season. A festival would celebrate your stewardship and boost morale among your people."
+      satisfies: ["people"]
+      costs:
+        grain: 75
+        gold: 100
+      time: "1 turn"
+      effects: ["+legitimacy.law = 3"]
+
+  - id: "scholar_visit"
+    conditions: ["legitimacy", "gold > 150"]
+    action:
+      id: "host_traveling_scholar"
+      label: "Host Traveling Scholar"
+      description: "A renowned scholar seeks patronage. Supporting their research could bring prestige and potentially useful knowledge."
+      satisfies: []
+      costs:
+        gold: 150
+      rewards:
+        gold: 50
+      time: "1 turn"
+      effects: ["gain_knowledge", "improve_reputation", "+legitimacy.law = 2"]
+
+  - id: "crime_wave"
+    conditions: ["high_crime", "lawfulness < 30"]
+    action:
+      id: "deal_with_crime_wave"
+      label: "Deal with Crime Wave"
+      description: "Lawlessness spreads through your territories. Bandits and criminals grow bold, threatening trade and terrorizing citizens. Swift action is needed."
+      satisfies: ["governance"]
+      costs: {}
+      rewards: {}
+      risks:
+        escalation: 0.2
+      time: "1 turn"
+      effects: ["+region.lawfulness = 5", "-region.unrest = 3"]
+
+  - id: "judicial_corruption"
+    conditions: ["high_bureaucracy", "legitimacy.law > 60"]
+    action:
+      id: "address_corruption"
+      label: "Address Judicial Corruption"
+      description: "Reports reach you of corruption within your courts. Judges take bribes, laws favor the wealthy, and justice becomes a commodity. Reform is urgently needed."
+      satisfies: ["governance"]
+      costs:
+        gold: 100
+      rewards: {}
+      time: "2 turns"
+      effects: ["+legitimacy.law = 8", "+region.lawfulness = 15", "-region.unrest = 5"]
+
+  - id: "heresy_outbreak"
+    conditions: ["heresy_pressure", "heresy > 70"]
+    action:
+      id: "deal_with_heresy"
+      label: "Deal with Heresy Outbreak"
+      description: "Heretical movements spread through your lands, challenging religious orthodoxy and weakening faith. The clergy demands action to preserve spiritual unity."
+      satisfies: ["faith"]
+      costs: {}
+      rewards: {}
+      risks:
+        religious_conflict: 0.3
+      time: "2 turns"
+      effects: ["+legitimacy.faith = 5", "-region.heresy = 10", "+region.piety = 8"]
+
+  - id: "false_prophet"
+    conditions: ["legitimacy.faith < 30", "piety > 60"]
+    action:
+      id: "address_false_prophet"
+      label: "Address False Prophet"
+      description: "A charismatic preacher gains followers by claiming divine visions, threatening to undermine established religious authority. Their growing influence concerns the orthodox clergy."
+      satisfies: ["faith"]
+      costs:
+        gold: 150
+      rewards: {}
+      risks:
+        martyrdom: 0.2
+      time: "1 turn"
+      effects: ["+legitimacy.faith = 12", "-region.heresy = 8", "+region.piety = 5"]
+
+  - id: "religious_festival"
+    conditions: ["piety > 70", "gold > 300"]
+    action:
+      id: "organize_religious_festival"
+      label: "Organize Religious Festival"
+      description: "High piety among your people creates an opportunity for a grand religious celebration. Such festivals strengthen faith and demonstrate divine favor upon your rule."
+      satisfies: ["faith"]
+      costs:
+        gold: 250
+        grain: 100
+      rewards: {}
+      time: "1 turn"
+      effects: ["+legitimacy.faith = 8", "+region.piety = 5", "-region.unrest = 8"]

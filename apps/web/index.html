@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ambition - Interactive Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .map-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: move;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .region-panel {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .region-panel h3 {
+            color: #ffd700;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            opacity: 0.8;
+            margin-bottom: 2px;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .trait-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .trait-tag {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-btn {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            backdrop-filter: blur(5px);
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .overview-panel {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .overview-panel h2 {
+            color: #ffd700;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .resources-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .resource-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 6px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 40vh;
+                order: 2;
+            }
+            
+            .map-container {
+                height: 60vh;
+                order: 1;
+            }
+            
+            .controls {
+                top: 10px;
+                right: 10px;
+            }
+            
+            .control-btn {
+                padding: 8px 12px;
+                font-size: 0.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="overview-panel">
+                <h2>World Overview</h2>
+                <div id="world-stats">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <div>Loading world data...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="region-panel" id="region-info" style="display: none;">
+                <h3 id="region-title">Select a Region</h3>
+                <div id="region-details"></div>
+            </div>
+        </div>
+        
+        <div class="map-container">
+            <div class="loading" id="map-loading">
+                <div class="loading-spinner"></div>
+                <div>Loading map...</div>
+            </div>
+            
+            <svg class="map-canvas" id="map-canvas" style="display: none;">
+            </svg>
+            
+            <div class="controls">
+                <button class="control-btn" id="zoom-in">Zoom In</button>
+                <button class="control-btn" id="zoom-out">Zoom Out</button>
+                <button class="control-btn" id="reset-view">Reset View</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AmbitionMap {
+            constructor() {
+                this.svg = document.getElementById('map-canvas');
+                this.mapContainer = this.svg.parentElement;
+                this.regionInfo = document.getElementById('region-info');
+                this.worldStats = document.getElementById('world-stats');
+                
+                this.scale = 1;
+                this.translateX = 0;
+                this.translateY = 0;
+                this.isDragging = false;
+                this.lastMouseX = 0;
+                this.lastMouseY = 0;
+                
+                this.hexSize = 30;
+                this.selectedRegion = null;
+                
+                this.initializeEventListeners();
+                this.loadMapData();
+            }
+            
+            initializeEventListeners() {
+                // Mouse events for pan and zoom
+                this.svg.addEventListener('mousedown', this.onMouseDown.bind(this));
+                document.addEventListener('mousemove', this.onMouseMove.bind(this));
+                document.addEventListener('mouseup', this.onMouseUp.bind(this));
+                this.svg.addEventListener('wheel', this.onWheel.bind(this));
+                
+                // Control buttons
+                document.getElementById('zoom-in').addEventListener('click', () => this.zoom(1.2));
+                document.getElementById('zoom-out').addEventListener('click', () => this.zoom(0.8));
+                document.getElementById('reset-view').addEventListener('click', () => this.resetView());
+                
+                // Prevent context menu
+                this.svg.addEventListener('contextmenu', e => e.preventDefault());
+            }
+            
+            async loadMapData() {
+                try {
+                    // For now, we'll create mock data since we need authentication
+                    // In a real implementation, this would fetch from the API
+                    await this.loadMockData();
+                } catch (error) {
+                    console.error('Failed to load map data:', error);
+                    document.getElementById('map-loading').innerHTML = 
+                        '<div style="color: #ff6b6b;">Failed to load map data</div>';
+                }
+            }
+            
+            async loadMockData() {
+                // Mock world overview data
+                const mockOverview = {
+                    overview: {
+                        tick: 45,
+                        totalRegions: 12,
+                        totalFactions: 4,
+                        totalPopulation: 125000,
+                        averageProsperity: 65,
+                        averageStability: 72,
+                        playerResources: {
+                            gold: 2500,
+                            influence: 150,
+                            military: 80
+                        },
+                        playerLegitimacy: {
+                            law: 68,
+                            lineage: 45,
+                            might: 72,
+                            faith: 59
+                        }
+                    }
+                };
+                
+                // Mock map tiles
+                const mockTiles = [];
+                const regions = [
+                    { name: "Goldenheart", prosperity: 85, population: 15000, faction: "The Golden Crown" },
+                    { name: "Ironhold", prosperity: 60, population: 12000, faction: "Iron Brotherhood" },
+                    { name: "Verdant Vale", prosperity: 75, population: 18000, faction: "Nature's Alliance" },
+                    { name: "Shadowmere", prosperity: 45, population: 8000, faction: "Shadow Guild" },
+                    { name: "Brightwater", prosperity: 70, population: 13000, faction: "The Golden Crown" },
+                    { name: "Stormwind", prosperity: 55, population: 10000, faction: "Iron Brotherhood" },
+                    { name: "Moonhaven", prosperity: 65, population: 11000, faction: "Nature's Alliance" },
+                    { name: "Darkwood", prosperity: 40, population: 7000, faction: "Shadow Guild" },
+                    { name: "Sunspear", prosperity: 80, population: 14000, faction: "The Golden Crown" },
+                    { name: "Frostholm", prosperity: 50, population: 9000, faction: "Iron Brotherhood" },
+                    { name: "Emerald Grove", prosperity: 78, population: 16000, faction: "Nature's Alliance" },
+                    { name: "Ravensburg", prosperity: 35, population: 6000, faction: "Shadow Guild" }
+                ];
+                
+                for (let i = 0; i < regions.length; i++) {
+                    const row = Math.floor(i / 4);
+                    const col = i % 4;
+                    const x = col + (row % 2) * 0.5;
+                    const y = row * 0.866;
+                    
+                    mockTiles.push({
+                        id: `tile_${i}`,
+                        x: x * 80 + 200,
+                        y: y * 80 + 150,
+                        regionId: `region_${i}`,
+                        region: regions[i]
+                    });
+                }
+                
+                this.renderWorldStats(mockOverview.overview);
+                this.renderMap(mockTiles);
+                
+                // Hide loading indicators
+                document.getElementById('map-loading').style.display = 'none';
+                this.svg.style.display = 'block';
+            }
+            
+            renderWorldStats(overview) {
+                this.worldStats.innerHTML = `
+                    <div class="stat-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">Tick</div>
+                            <div class="stat-value">${overview.tick}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Regions</div>
+                            <div class="stat-value">${overview.totalRegions}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Population</div>
+                            <div class="stat-value">${(overview.totalPopulation / 1000).toFixed(0)}K</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Prosperity</div>
+                            <div class="stat-value">${overview.averageProsperity}</div>
+                        </div>
+                    </div>
+                    
+                    <h4 style="margin: 15px 0 10px; color: #ffd700;">Resources</h4>
+                    <div class="resources-grid">
+                        <div class="resource-item">
+                            <div class="stat-label">Gold</div>
+                            <div class="stat-value">${overview.playerResources.gold}</div>
+                        </div>
+                        <div class="resource-item">
+                            <div class="stat-label">Influence</div>
+                            <div class="stat-value">${overview.playerResources.influence}</div>
+                        </div>
+                        <div class="resource-item">
+                            <div class="stat-label">Military</div>
+                            <div class="stat-value">${overview.playerResources.military}</div>
+                        </div>
+                    </div>
+                    
+                    <h4 style="margin: 15px 0 10px; color: #ffd700;">Legitimacy</h4>
+                    <div class="resources-grid">
+                        <div class="resource-item">
+                            <div class="stat-label">Law</div>
+                            <div class="stat-value">${overview.playerLegitimacy.law}</div>
+                        </div>
+                        <div class="resource-item">
+                            <div class="stat-label">Might</div>
+                            <div class="stat-value">${overview.playerLegitimacy.might}</div>
+                        </div>
+                        <div class="resource-item">
+                            <div class="stat-label">Faith</div>
+                            <div class="stat-value">${overview.playerLegitimacy.faith}</div>
+                        </div>
+                        <div class="resource-item">
+                            <div class="stat-label">Lineage</div>
+                            <div class="stat-value">${overview.playerLegitimacy.lineage}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            renderMap(tiles) {
+                // Set SVG dimensions
+                const containerRect = this.mapContainer.getBoundingClientRect();
+                this.svg.setAttribute('width', containerRect.width);
+                this.svg.setAttribute('height', containerRect.height);
+                
+                // Create hex path
+                const hexPath = this.createHexPath(this.hexSize);
+                
+                // Clear existing content
+                this.svg.innerHTML = '';
+                
+                // Create group for map content
+                const mapGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                mapGroup.setAttribute('id', 'map-group');
+                this.svg.appendChild(mapGroup);
+                
+                // Render tiles
+                tiles.forEach(tile => {
+                    this.renderHexTile(mapGroup, tile, hexPath);
+                });
+                
+                // Center the view
+                this.centerView(tiles);
+            }
+            
+            createHexPath(size) {
+                const points = [];
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI / 3) * i;
+                    const x = size * Math.cos(angle);
+                    const y = size * Math.sin(angle);
+                    points.push(`${x},${y}`);
+                }
+                return `M ${points.join(' L ')} Z`;
+            }
+            
+            renderHexTile(parent, tile, hexPath) {
+                const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                group.setAttribute('transform', `translate(${tile.x}, ${tile.y})`);
+                group.setAttribute('data-region-id', tile.regionId);
+                group.style.cursor = 'pointer';
+                
+                // Create hex shape
+                const hex = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                hex.setAttribute('d', hexPath);
+                
+                // Color based on prosperity
+                const prosperity = tile.region.prosperity;
+                const hue = (prosperity / 100) * 120; // 0 = red, 120 = green
+                hex.setAttribute('fill', `hsl(${hue}, 60%, 45%)`);
+                hex.setAttribute('stroke', '#ffffff');
+                hex.setAttribute('stroke-width', '1');
+                hex.style.transition = 'all 0.3s ease';
+                
+                group.appendChild(hex);
+                
+                // Add region name
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('dominant-baseline', 'middle');
+                text.setAttribute('fill', '#ffffff');
+                text.setAttribute('font-size', '10');
+                text.setAttribute('font-weight', 'bold');
+                text.textContent = tile.region.name;
+                group.appendChild(text);
+                
+                // Add hover effects
+                group.addEventListener('mouseenter', () => {
+                    hex.setAttribute('stroke-width', '3');
+                    hex.setAttribute('stroke', '#ffd700');
+                });
+                
+                group.addEventListener('mouseleave', () => {
+                    if (this.selectedRegion !== tile.regionId) {
+                        hex.setAttribute('stroke-width', '1');
+                        hex.setAttribute('stroke', '#ffffff');
+                    }
+                });
+                
+                // Add click handler
+                group.addEventListener('click', () => {
+                    this.selectRegion(tile);
+                });
+                
+                parent.appendChild(group);
+            }
+            
+            selectRegion(tile) {
+                // Clear previous selection
+                if (this.selectedRegion) {
+                    const prevSelected = this.svg.querySelector(`[data-region-id="${this.selectedRegion}"] path`);
+                    if (prevSelected) {
+                        prevSelected.setAttribute('stroke-width', '1');
+                        prevSelected.setAttribute('stroke', '#ffffff');
+                    }
+                }
+                
+                // Highlight new selection
+                this.selectedRegion = tile.regionId;
+                const hex = this.svg.querySelector(`[data-region-id="${tile.regionId}"] path`);
+                if (hex) {
+                    hex.setAttribute('stroke-width', '3');
+                    hex.setAttribute('stroke', '#ffd700');
+                }
+                
+                // Show region info
+                this.showRegionInfo(tile.region);
+            }
+            
+            showRegionInfo(region) {
+                document.getElementById('region-title').textContent = region.name;
+                document.getElementById('region-details').innerHTML = `
+                    <div class="stat-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">Population</div>
+                            <div class="stat-value">${(region.population / 1000).toFixed(1)}K</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Prosperity</div>
+                            <div class="stat-value">${region.prosperity}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <div class="stat-label">Controlling Faction</div>
+                        <div class="stat-value" style="color: #ffd700;">${region.faction}</div>
+                    </div>
+                `;
+                this.regionInfo.style.display = 'block';
+            }
+            
+            centerView(tiles) {
+                if (tiles.length === 0) return;
+                
+                const bounds = tiles.reduce((acc, tile) => ({
+                    minX: Math.min(acc.minX, tile.x),
+                    maxX: Math.max(acc.maxX, tile.x),
+                    minY: Math.min(acc.minY, tile.y),
+                    maxY: Math.max(acc.maxY, tile.y)
+                }), { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+                
+                const centerX = (bounds.minX + bounds.maxX) / 2;
+                const centerY = (bounds.minY + bounds.maxY) / 2;
+                
+                const containerRect = this.mapContainer.getBoundingClientRect();
+                this.translateX = containerRect.width / 2 - centerX;
+                this.translateY = containerRect.height / 2 - centerY;
+                
+                this.updateTransform();
+            }
+            
+            onMouseDown(e) {
+                this.isDragging = true;
+                this.lastMouseX = e.clientX;
+                this.lastMouseY = e.clientY;
+                e.preventDefault();
+            }
+            
+            onMouseMove(e) {
+                if (!this.isDragging) return;
+                
+                const deltaX = e.clientX - this.lastMouseX;
+                const deltaY = e.clientY - this.lastMouseY;
+                
+                this.translateX += deltaX;
+                this.translateY += deltaY;
+                
+                this.lastMouseX = e.clientX;
+                this.lastMouseY = e.clientY;
+                
+                this.updateTransform();
+            }
+            
+            onMouseUp() {
+                this.isDragging = false;
+            }
+            
+            onWheel(e) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                this.zoom(delta, e.clientX, e.clientY);
+            }
+            
+            zoom(factor, centerX, centerY) {
+                const containerRect = this.mapContainer.getBoundingClientRect();
+                const cx = centerX || containerRect.width / 2;
+                const cy = centerY || containerRect.height / 2;
+                
+                // Calculate world coordinates of zoom center
+                const worldX = (cx - this.translateX) / this.scale;
+                const worldY = (cy - this.translateY) / this.scale;
+                
+                // Apply scale
+                this.scale *= factor;
+                this.scale = Math.max(0.1, Math.min(3, this.scale));
+                
+                // Adjust translation to keep zoom center fixed
+                this.translateX = cx - worldX * this.scale;
+                this.translateY = cy - worldY * this.scale;
+                
+                this.updateTransform();
+            }
+            
+            resetView() {
+                this.scale = 1;
+                this.translateX = 0;
+                this.translateY = 0;
+                this.updateTransform();
+            }
+            
+            updateTransform() {
+                const mapGroup = document.getElementById('map-group');
+                if (mapGroup) {
+                    mapGroup.setAttribute('transform', 
+                        `translate(${this.translateX}, ${this.translateY}) scale(${this.scale})`);
+                }
+            }
+        }
+        
+        // Initialize the map when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new AmbitionMap();
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const map = document.getElementById('map-canvas');
+            const container = map.parentElement;
+            const containerRect = container.getBoundingClientRect();
+            map.setAttribute('width', containerRect.width);
+            map.setAttribute('height', containerRect.height);
+        });
+    </script>
+</body>
+</html>

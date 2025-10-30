@@ -1,0 +1,174 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Player {
+  id        String   @id @default(cuid())
+  handle    String   @unique
+  createdAt DateTime @default(now())
+
+  // Relations
+  sessions     Session[]
+  gameSessions GameSession[]
+  
+  @@map("players")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  playerId     String
+  sessionToken String   @unique
+  createdAt    DateTime @default(now())
+  lastActiveAt DateTime @default(now())
+
+  // Relations
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model GameSession {
+  id            String   @id @default(cuid())
+  playerId      String
+  seed          Int
+  worldSnapshot String   // JSONB - complete WorldState + additional game state
+  tick          Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("game_sessions")
+  @@index([playerId])
+  @@index([playerId, updatedAt])
+}
+
+// Keep legacy models for backward compatibility during migration
+model PlayerSession {
+  id               String   @id @default(cuid())
+  playerId         String   @unique
+  seed             Int
+  ambitionProfile  String   // JSON string
+  influence        String   // JSON string of PlayerInfluence
+  diplomacyState   String   // JSON string of DiplomacyState
+  vassalState      String   // JSON string of VassalState[]
+  courtState       String   // JSON string of CourtState
+  playerTitles     String   // JSON string array
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  worldSnapshots   WorldSnapshot[]
+  factions         Faction[]
+  relations        Relation[]
+  treaties         Treaty[]
+  eventLogs        EventLog[]
+
+  @@map("player_sessions")
+}
+
+model WorldSnapshot {
+  id               String        @id @default(cuid())
+  sessionId        String
+  tick             Int
+  worldState       String        // JSON string of WorldState
+  createdAt        DateTime      @default(now())
+
+  // Relations
+  session          PlayerSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("world_snapshots")
+  @@index([sessionId, tick])
+}
+
+model Faction {
+  id               String        @id @default(cuid())
+  sessionId        String
+  factionId        String        // faction_0, faction_1, etc.
+  name             String
+  ambitionData     String        // JSON string of FactionAmbition
+  lastUpdated      Int           // tick
+  createdAt        DateTime      @default(now())
+
+  // Relations
+  session          PlayerSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  relationsA       Relation[]    @relation("FactionA")
+  relationsB       Relation[]    @relation("FactionB")
+  treatiesA        Treaty[]      @relation("TreatyFactionA")
+  treatiesB        Treaty[]      @relation("TreatyFactionB")
+
+  @@map("factions")
+  @@unique([sessionId, factionId])
+}
+
+model Relation {
+  id               String        @id @default(cuid())
+  sessionId        String
+  factionAId       String        
+  factionBId       String        
+  attitude         String        // 'allied', 'neutral', 'hostile', etc.
+  strength         Float         // 0.0 to 1.0
+  lastInteraction  Int           // tick
+  history          String        // JSON array of interaction history
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  // Relations
+  session          PlayerSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  factionA         Faction       @relation("FactionA", fields: [factionAId], references: [id], onDelete: Cascade)
+  factionB         Faction       @relation("FactionB", fields: [factionBId], references: [id], onDelete: Cascade)
+
+  @@map("relations")
+  @@unique([sessionId, factionAId, factionBId])
+}
+
+model Treaty {
+  id               String        @id @default(cuid())
+  sessionId        String
+  treatyId         String        // treaty_123_456, etc.
+  factionAId       String        // 'player' or faction ID
+  factionBId       String        // faction ID
+  treatyType       String        // TreatyType enum
+  terms            String        // JSON array of TreatyTerm[]
+  startTick        Int
+  endTick          Int?          // null for permanent treaties
+  status           String        // 'active', 'expired', 'broken'
+  brokenBy         String?       // who broke it
+  brokenAtTick     Int?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  // Relations
+  session          PlayerSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  factionA         Faction?      @relation("TreatyFactionA", fields: [factionAId], references: [id], onDelete: Cascade)
+  factionB         Faction?      @relation("TreatyFactionB", fields: [factionBId], references: [id], onDelete: Cascade)
+
+  @@map("treaties")
+  @@unique([sessionId, treatyId])
+}
+
+model EventLog {
+  id               String        @id @default(cuid())
+  sessionId        String
+  tick             Int
+  eventType        String        // 'action', 'court_choice', 'diplomacy', 'faction_action', etc.
+  eventData        String        // JSON payload
+  description      String        // Human readable description
+  createdAt        DateTime      @default(now())
+
+  // Relations
+  session          PlayerSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("event_logs")
+  @@index([sessionId, tick])
+  @@index([sessionId, eventType])
+}

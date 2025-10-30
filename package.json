@@ -1,0 +1,26 @@
+{
+  "name": "@ambition/root",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ambition - Text/browser/map-based sandbox with Oracle Engine",
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter @ambition/api dev\" \"pnpm --filter @ambition/web dev\"",
+    "build": "pnpm --recursive build",
+    "test": "pnpm --recursive test",
+    "lint": "pnpm --recursive lint",
+    "typecheck": "pnpm --recursive typecheck",
+    "clean": "pnpm --recursive clean"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "concurrently": "^9.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.0.0"
+  },
+  "packageManager": "pnpm@8.6.10"
+}
